@@ -15,7 +15,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.gis.geoip2 import GeoIP2
 from django.core import signing
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.http import HttpRequest
 from django.template.loader import get_template
 from django.urls import reverse
@@ -669,12 +669,16 @@ class StripeMethod(BasePaymentProvider):
             .select_related("tier_version")
             .first()
         )
-        resolve_fee_settings = import_module("eventyay_business.services").resolve_fee_settings
-        fee_percent, max_fee, _ = resolve_fee_settings(
-            event=self.event,
-            order=payment.order,
-            tier_version=subscription.tier_version if subscription else None,
-        )
+        try:
+            resolve_fee_settings = import_module("eventyay_business.services").resolve_fee_settings
+            fee_percent, max_fee, _is_override = resolve_fee_settings(
+                event=self.event,
+                order=payment.order,
+                tier_version=subscription.tier_version if subscription else None,
+            )
+        except (ImportError, AttributeError, ValueError, TypeError, ArithmeticError, DatabaseError) as exc:
+            logger.exception("Unable to resolve Business fee settings")
+            raise PaymentException(_("Unable to determine the payment fee.")) from exc
         if fee_percent <= 0:
             return Decimal("0.00")
 
