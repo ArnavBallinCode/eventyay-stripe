@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.db import DatabaseError
 from eventyay.base.payment import PaymentException
 
 from eventyay_stripe.payment import StripeMethod
@@ -40,6 +41,31 @@ def test_missing_business_subscription_model_is_payment_error():
     with (
         patch("eventyay_stripe.payment.apps.is_installed", return_value=True),
         patch("eventyay_stripe.payment.apps.get_model", side_effect=error),
+    ):
+        with pytest.raises(PaymentException) as exc_info:
+            method._business_platform_fee(payment)
+
+    assert exc_info.value.__cause__ is error
+
+
+def test_business_fee_position_lookup_failure_is_payment_error():
+    method = StripeMethod.__new__(StripeMethod)
+    method.event = SimpleNamespace(organizer=object())
+    error = DatabaseError("position lookup failed")
+    payment = MagicMock(amount=Decimal("10.00"))
+    payment.order.positions.all.side_effect = error
+    subscription_model = MagicMock()
+    subscription_model.objects.filter.return_value.exclude.return_value.select_related.return_value.first.return_value = None
+
+    with (
+        patch("eventyay_stripe.payment.apps.is_installed", return_value=True),
+        patch("eventyay_stripe.payment.apps.get_model", return_value=subscription_model),
+        patch(
+            "eventyay_stripe.payment.import_module",
+            return_value=SimpleNamespace(
+                resolve_fee_settings=MagicMock(return_value=(Decimal("10.00"), Decimal("1.00"), False))
+            ),
+        ),
     ):
         with pytest.raises(PaymentException) as exc_info:
             method._business_platform_fee(payment)

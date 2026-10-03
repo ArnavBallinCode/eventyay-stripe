@@ -676,20 +676,30 @@ class StripeMethod(BasePaymentProvider):
                 order=payment.order,
                 tier_version=subscription.tier_version if subscription else None,
             )
+            if fee_percent <= 0:
+                return Decimal("0.00")
+
+            with scope(event=self.event):
+                fee_base = sum(
+                    (
+                        position.price - (position.tax_value or Decimal("0.00"))
+                        for position in payment.order.positions.all()
+                    ),
+                    Decimal("0.00"),
+                )
+                prior_application_fees = sum(
+                    (
+                        self._amount_to_decimal(existing_payment.info_data.get("application_fee_amount", 0))
+                        for existing_payment in payment.order.payments.filter(
+                            provider__startswith="stripe",
+                            state=OrderPayment.PAYMENT_STATE_CONFIRMED,
+                        ).exclude(pk=payment.pk)
+                    ),
+                    Decimal("0.00"),
+                )
         except (ImportError, AttributeError, LookupError, ValueError, TypeError, ArithmeticError, DatabaseError) as exc:
             logger.exception("Unable to resolve Business fee settings")
             raise PaymentException(_("Unable to determine the payment fee.")) from exc
-        if fee_percent <= 0:
-            return Decimal("0.00")
-
-        with scope(event=self.event):
-            fee_base = sum(
-                (
-                    position.price - (position.tax_value or Decimal("0.00"))
-                    for position in payment.order.positions.all()
-                ),
-                Decimal("0.00"),
-            )
         if fee_base <= 0 or payment.order.total <= 0:
             return Decimal("0.00")
 
@@ -697,7 +707,8 @@ class StripeMethod(BasePaymentProvider):
         if max_fee > 0:
             full_fee = min(full_fee, max_fee)
         payment_share = min(payment.amount / payment.order.total, Decimal("1.00"))
-        fee = round_decimal(full_fee * payment_share, self.event.currency)
+        remaining_fee = max(full_fee - prior_application_fees, Decimal("0.00"))
+        fee = min(round_decimal(full_fee * payment_share, self.event.currency), remaining_fee)
         return min(fee, payment.amount)
 
     def statement_descriptor(self, payment, length=22):
