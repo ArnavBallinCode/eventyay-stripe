@@ -2,10 +2,16 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from eventyay_stripe.payment import StripeMethod
 
 
-def test_business_fee_does_not_exceed_remaining_order_fee_cap():
+@pytest.mark.parametrize(
+    ("prior_application_fee", "expected_fee"),
+    [(75, Decimal("0.25")), (None, Decimal("0.75"))],
+)
+def test_business_fee_does_not_exceed_remaining_order_fee_cap(prior_application_fee, expected_fee):
     method = StripeMethod.__new__(StripeMethod)
     method.event = SimpleNamespace(organizer=object(), currency="EUR")
     method._amount_to_decimal = lambda cents: Decimal(cents) / 100
@@ -15,7 +21,7 @@ def test_business_fee_does_not_exceed_remaining_order_fee_cap():
         SimpleNamespace(price=Decimal("20.00"), tax_value=Decimal("0.00")),
     ]
     payment.order.payments.filter.return_value.exclude.return_value = [
-        SimpleNamespace(info_data={"application_fee_amount": 75}),
+        SimpleNamespace(info_data={"application_fee_amount": prior_application_fee}),
     ]
     subscription_model = MagicMock()
     subscription_model.objects.filter.return_value.exclude.return_value.select_related.return_value.first.return_value = None
@@ -30,4 +36,4 @@ def test_business_fee_does_not_exceed_remaining_order_fee_cap():
             ),
         ),
     ):
-        assert method._business_platform_fee(payment) == Decimal("0.25")
+        assert method._business_platform_fee(payment) == expected_fee

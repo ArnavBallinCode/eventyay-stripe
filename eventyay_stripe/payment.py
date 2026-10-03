@@ -689,7 +689,7 @@ class StripeMethod(BasePaymentProvider):
                 )
                 prior_application_fees = sum(
                     (
-                        self._amount_to_decimal(existing_payment.info_data.get("application_fee_amount", 0))
+                        self._amount_to_decimal(existing_payment.info_data.get("application_fee_amount") or 0)
                         for existing_payment in payment.order.payments.filter(
                             provider__startswith="stripe",
                             state=OrderPayment.PAYMENT_STATE_CONFIRMED,
