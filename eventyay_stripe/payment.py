@@ -657,26 +657,26 @@ class StripeMethod(BasePaymentProvider):
         if not apps.is_installed("eventyay_business") or payment.amount <= 0:
             return Decimal("0.00")
 
-        subscription_model = apps.get_model("eventyay_business", "Subscription")
-        payment_date = now()
-        subscription = (
-            subscription_model.objects.filter(
-                organizer=self.event.organizer,
-                status="active",
-                starts_at__lte=payment_date,
-            )
-            .exclude(ends_at__lt=payment_date)
-            .select_related("tier_version")
-            .first()
-        )
         try:
+            subscription_model = apps.get_model("eventyay_business", "Subscription")
+            payment_date = now()
+            subscription = (
+                subscription_model.objects.filter(
+                    organizer=self.event.organizer,
+                    status="active",
+                    starts_at__lte=payment_date,
+                )
+                .exclude(ends_at__lt=payment_date)
+                .select_related("tier_version")
+                .first()
+            )
             resolve_fee_settings = import_module("eventyay_business.services").resolve_fee_settings
             fee_percent, max_fee, _is_override = resolve_fee_settings(
                 event=self.event,
                 order=payment.order,
                 tier_version=subscription.tier_version if subscription else None,
             )
-        except (ImportError, AttributeError, ValueError, TypeError, ArithmeticError, DatabaseError) as exc:
+        except (ImportError, AttributeError, LookupError, ValueError, TypeError, ArithmeticError, DatabaseError) as exc:
             logger.exception("Unable to resolve Business fee settings")
             raise PaymentException(_("Unable to determine the payment fee.")) from exc
         if fee_percent <= 0:

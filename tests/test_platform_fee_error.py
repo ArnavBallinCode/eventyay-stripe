@@ -29,3 +29,19 @@ def test_business_fee_resolution_failure_is_payment_error(error):
             method._business_platform_fee(payment)
 
     assert exc_info.value.__cause__ is error
+
+
+def test_missing_business_subscription_model_is_payment_error():
+    method = StripeMethod.__new__(StripeMethod)
+    method.event = SimpleNamespace(organizer=object())
+    payment = SimpleNamespace(amount=Decimal("10.00"), order=object())
+    error = LookupError("missing Subscription model")
+
+    with (
+        patch("eventyay_stripe.payment.apps.is_installed", return_value=True),
+        patch("eventyay_stripe.payment.apps.get_model", side_effect=error),
+    ):
+        with pytest.raises(PaymentException) as exc_info:
+            method._business_platform_fee(payment)
+
+    assert exc_info.value.__cause__ is error
