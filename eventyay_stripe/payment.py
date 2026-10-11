@@ -1077,13 +1077,18 @@ class StripeMethod(BasePaymentProvider):
             else:
                 chargeid = payment_info["id"]
 
+            refund_connect_args = {"reverse_transfer": True} if self.settings.connect_destination else {}
+            application_fee_amount = payment_info.get("application_fee_amount")
+            if isinstance(application_fee_amount, int) and application_fee_amount > 0:
+                refund_connect_args["refund_application_fee"] = True
+
             # stripe update: from Charge to Refund
             # doc: https://docs.stripe.com/api/refunds?lang=python
             r = stripe.Refund.create(
                 charge=chargeid,
                 amount=self._get_amount(refund),
                 **self.api_config,
-                **({"reverse_transfer": True} if self.settings.connect_destination else {}),
+                **refund_connect_args,
             )
         except (
             stripe.error.InvalidRequestError,
