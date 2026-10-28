@@ -3,4 +3,5 @@ recursive-include eventyay_stripe/templates *
 recursive-include eventyay_stripe/locale *
 
 include AGENTS.md CLAUDE.md CODEX.md
+include .github/copilot-instructions.md
 recursive-include .agents *.md

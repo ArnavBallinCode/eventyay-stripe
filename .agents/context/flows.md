@@ -37,7 +37,9 @@ HTTP response alone does not prove that an order was paid. Preserve replay,
 out-of-order delivery, scope, and already-completed payment behavior.
 
 The signing secret currently comes from core's global
-`stripe_webhook_secret_key`. Do not invent per-event/per-endpoint secret settings
+`stripe_webhook_secret_key`, read by `get_stripe_webhook_secret_key()` in
+`app/eventyay/helpers/stripe_utils.py` (core `dev`, inspected 2026-10-28).
+The helper in that revision does not read `payment_stripe_webhook_secret`. Do not invent per-event/per-endpoint secret settings
 in setup instructions. Core billing and Business billing have separate handlers;
 verify the target route before diagnosing a missing update.
 
@@ -69,9 +71,14 @@ helpers. `eventyay_stripe/tests/` contains database-backed `test_provider.py`,
 
 Current CI invokes `pytest tests --reruns 3`, and `pyproject.toml` sets
 `testpaths = ["tests"]`; that selection does not include the nested suite. For
-provider changes, explicitly run `pytest tests eventyay_stripe/tests` with core
+provider changes, explicitly run `pytest -p no:env tests eventyay_stripe/tests` with core
 Django settings and test services from [development](development.md). The nested
 tests also skip at module level if the settings environment variable is absent.
+Even with settings supplied, `test_webhook.py` unconditionally skips the entire
+module, and the checkout test in `test_checkout.py` is also unconditionally
+skipped because their multidomain/session setup is incomplete. Use `-rs` to
+inspect skip reasons. Selecting the suite does not establish webhook or checkout
+coverage; these flows need working fixtures and separate regression validation.
 Core integration tests include
 `app/tests/tickets/api/test_stripe_webhook_routes.py` and
 `test_payment_plugin_compat.py`. Do not infer complete coverage from green helper CI.

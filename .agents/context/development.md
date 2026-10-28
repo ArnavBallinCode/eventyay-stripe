@@ -47,9 +47,12 @@ EVY_POSTGRES_HOST=localhost EVY_POSTGRES_PORT=5432 \
 EVY_POSTGRES_USER=postgres EVY_POSTGRES_PASSWORD=postgres \
 EVY_POSTGRES_DB=eventyay-db \
 DJANGO_SETTINGS_MODULE=eventyay.config.settings \
-PYTHONPATH="$EVENTYAY_CORE/app" pytest tests
+PYTHONPATH="$EVENTYAY_CORE/app" pytest -p no:env tests
 ```
 
+The command disables the `pytest-env` plugin with `-p no:env` so the explicit
+environment is used. Without that flag, the plain `[tool.pytest_env]` entries in
+`pyproject.toml` overwrite the supplied database variables. CI uses those defaults.
 The values above are local CI-style test credentials only. Adjust them for your
 disposable test database; never point this command at production. For focused
 runs replace `tests` with the relevant test module from [the flow map](flows.md).
@@ -60,8 +63,11 @@ extra. Install test extras with `uv pip install --python "$EVENTYAY_CORE/app/.ve
 from this repository; use the declared Ruff version for development tools.
 Style checks are `ruff check .` and `ruff format --check .`; see
 `.github/workflows/ruff.yml`. The default CI selection covers helper/validation/privacy tests. Also run
-`pytest tests eventyay_stripe/tests` for the nested provider/checkout/webhook suite
-with the same explicit Django settings and database environment.
+`pytest -p no:env tests eventyay_stripe/tests -rs` for the nested provider/checkout/webhook suite
+with the same explicit Django settings and database environment. The webhook
+module and checkout test remain unconditionally skipped because their
+multidomain/session setup is incomplete; this command reports those skips rather
+than proving those flows work. See [test gaps](flows.md#test-map-and-gaps).
 
 ## Documentation and PR checks
 
