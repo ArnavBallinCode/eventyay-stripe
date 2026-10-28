@@ -1,3 +1,6 @@
 recursive-include eventyay_stripe/static *
 recursive-include eventyay_stripe/templates *
 recursive-include eventyay_stripe/locale *
+
+include AGENTS.md CLAUDE.md CODEX.md
+recursive-include .agents *.md
