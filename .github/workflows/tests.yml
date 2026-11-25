@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The version the plugin pins, and the next major version it is being prepared for.
+        # Exercise the previous SDK during migration and the current package requirement.
         stripe: ["11.3.*", "15.*"]
 
     services:
