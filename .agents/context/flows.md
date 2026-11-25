@@ -16,7 +16,7 @@
    to the core order/payment. SCA and return views use order secrets and payment
    identity; do not reduce these checks to a user-controlled order code.
 
-The repository currently pins `stripe==11.3.*` and `_init_api` sets
+The repository currently pins `stripe==15.*` and `_init_api` sets
 `2024-11-20.acacia`. These describe current code, not a recommendation to use that
 version in a new integration. API/SDK upgrades need their own compatibility work.
 
@@ -70,7 +70,7 @@ helpers. `eventyay_stripe/tests/` contains database-backed `test_provider.py`,
 `test_checkout.py`, `test_settings.py`, and `test_webhook.py`.
 
 CI runs `pytest tests eventyay_stripe/tests --reruns 3` once with `stripe==11.3.*`
-and once with `stripe==15.*`, so both suites run against the pinned and the next
+and once with `stripe==15.*`, so both suites run against the previous and the current
 major Stripe SDK. `pyproject.toml` still sets `testpaths = ["tests"]`, so a bare
 `pytest` locally selects only the helper suite; run
 `pytest -p no:env tests eventyay_stripe/tests` with core Django settings and test

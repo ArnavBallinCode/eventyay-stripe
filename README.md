@@ -64,7 +64,7 @@ Requirements
 - A working Eventyay development or production setup
 - A Stripe account
 - Stripe API keys or Stripe Connect configuration
-- The Python package ``stripe==11.3.*``
+- The Python package ``stripe==15.*``
 
 Installation for development
 ----------------------------
